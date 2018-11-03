@@ -13,6 +13,7 @@
 #include <swiftpro/SwiftproState.h>
 
 serial::Serial _serial;				// serial object
+									// https://github.com/wjwwood/serial
 float position[4] = {0.0};			// 3 cartesian coordinates: x, y, z(mm) and 1 angle(degree)
 char  strdata[2048];				// global variables for handling string
 
@@ -103,7 +104,17 @@ int main(int argc, char** argv)
 		if (_serial.available())
 		{
 			result.data = _serial.read(_serial.available());
-			// ROS_INFO_STREAM("Read:" << result.data);
+			ROS_INFO_STREAM("Read:" << result.data);
+
+			// _serial is reading stuff like "@3 X59.81 Y97.40 Z40.25 R102.00"
+			// so there are 5 values, and the last 4 are positions. 
+			// The inverse kinematics are calculated _on the uSwift!_
+
+			// TODO: Test the string 'result.data' to make sure it is formatted
+			//  correctly. If it's not, throw it out.
+			// TODO: Turn 'result.data' into a regular std::string object, because
+			//  there is no reason for it to be a std_msgs::String object.
+
 			for (int i = 0; i < result.data.length(); i++)
 				handlechar(result.data.c_str()[i]);
 
