@@ -8,16 +8,21 @@ Download ros packages for uarm swift pro
 $ cd ~/catkin_ws/src
 $ git clone https://github.com/uArm-Developer/RosForSwiftAndSwiftPro.git
 ```
-then manually copy package folders *swiftpro* *swift_moveit_config* and *pro_moveit_config* into a catkin_ws/src.
+then manually create symbolic links to the *swiftpro* *swift_moveit_config* and *pro_moveit_config* directories in catkin_ws/src:
+```bash
+ln -s RosForSwiftAndSwiftPro/swiftpro
+ln -s RosForSwiftAndSwiftPro/swift_moveit_config
+ln -s RosForSwiftAndSwiftPro/pro_moveit_config
+```
 
 Install ros serial package
 ```bash
-$ sudo apt-get install ros-kinetic-serial
+sudo apt-get install ros-kinetic-serial
 ```
 
 Compile
 ```bash
-$ catkin_make
+catkin_make
 ```
 
 ## 2. Set up enviroment
@@ -47,7 +52,7 @@ Connect swiftpro, send data though serial.
 ```bash
 roslaunch swiftpro pro_control.launch
 ```
-Open another ternimal to get joint angles from Moveit!.
+Open another terminal to get joint angles from Moveit!.
 ```bash
 roslaunch pro_moveit_config demo.launch
 ```
