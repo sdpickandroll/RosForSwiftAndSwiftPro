@@ -3,7 +3,8 @@
  * Copyright (c) 2017, UFactory, Inc.
  * All rights reserved.
  * Author: Roger Cui  <roger@ufactory.cc>
- *		   David Long <xiaokun.long@ufactory.cc>	   
+ *         David Long <xiaokun.long@ufactory.cc>  
+ *         Joshua Petrin <joshua.m.petrin@vanderbilt.edu>     
  */
  
 #include <ros/ros.h>
@@ -12,128 +13,137 @@
 #include <string>
 #include <swiftpro/SwiftproState.h>
 
-serial::Serial _serial;				// serial object
-									// https://github.com/wjwwood/serial
-float position[4] = {0.0};			// 3 cartesian coordinates: x, y, z(mm) and 1 angle(degree)
-char  strdata[2048];				// global variables for handling string
+serial::Serial _serial;             // serial object
 
 
-void handlestr()
+void processstr(swiftpro::SwiftproState* state, std::string data)
 {
-	char  *pch = strtok(strdata, " ");
-	float value[8];
-	int   index = 0;
+    char str[2048];
+    strcpy(str, data.c_str());
+    char* pch = strtok(str, " ");
+    float x, y, z, r;
+    int vals = 0;
 
-	while (pch != NULL && index < 5)
-	{
-		value[index] = atof(pch+1);
-		pch = strtok(NULL, " ");
-		index++;
-	}
-	position[0] = value[1];
-	position[1] = value[2];
-	position[2] = value[3];
-	position[3] = value[4];
+
+    while (vals < 4)
+    {
+        if (pch == NULL)
+        {
+            ROS_INFO_STREAM("Serial data misaligned. "
+                "Defaulting to previous measurement.");
+            return;
+        }
+        switch (pch[0])
+        {
+            case 'X':
+                x = atof(pch+1);
+                ++vals;
+                break;
+            case 'Y':
+                y = atof(pch+1);
+                ++vals;
+                break;
+            case 'Z':
+                z = atof(pch+1);
+                ++vals;
+                break;
+            case 'R':
+                r = atof(pch+1);
+                ++vals;
+                break;
+            case '@':
+                break;
+            default:
+                ROS_INFO_STREAM("Serial data misaligned. "
+                    "Defaulting to previous measurement.");
+                return;
+        }
+        pch = strtok(NULL, " ");
+    }
+
+    state->motor_angle4 = r;
+    state->x = x;
+    state->y = y;
+    state->z = z;
 }
 
-
-void handlechar(char c)
-{
-	static int index = 0;
-
-	switch(c)
-	{
-		case '\r':
-			break;	
-
-		case '\n':
-			strdata[index] = '\0';
-			handlestr();
-			index = 0;
-			break;
-
-		default:
-			strdata[index++] = c;
-			break;
-	}
-}
 
 /* 
  * Node name:
- *	 swiftpro_read_node
+ *   swiftpro_read_node
  *
  * Topic publish: (rate = 20Hz, queue size = 1)
  *   position_read_topic
  */
 int main(int argc, char** argv)
-{	
-	ros::init(argc, argv, "swiftpro_read_node");
-	ros::NodeHandle nh;
-	swiftpro::SwiftproState swiftpro_state;
-	std_msgs::String result;
+{   
+    ros::init(argc, argv, "swiftpro_read_node");
+    ros::NodeHandle nh;
+    swiftpro::SwiftproState swiftpro_state;
+    std::string result;
 
-	ros::Publisher pub = nh.advertise<swiftpro::SwiftproState>("SwiftproState_topic", 1);
-	ros::Rate loop_rate(20);
+    ros::Publisher pub = nh.advertise<swiftpro::SwiftproState>("SwiftproState_topic", 1);
+    ros::Rate loop_rate(20);
 
-	try
-	{
-		_serial.setPort("/dev/ttyACM0");
-		_serial.setBaudrate(115200);
-		serial::Timeout to = serial::Timeout::simpleTimeout(1000);
-		_serial.setTimeout(to);
-		_serial.open();
-		ROS_INFO_STREAM("Port has been open successfully");
-	}
-	catch (serial::IOException& e)
-	{
-		ROS_ERROR_STREAM("Unable to open port");
-		return -1;
-	}
-	
-	if (_serial.isOpen())
-	{
-		ros::Duration(3.0).sleep();				// wait 3s
-		_serial.write("M2019\r\n");				// detach
-		ros::Duration(0.5).sleep();				// wait 0.5s
-		_serial.write("M2120 V0.05\r\n");		// report position per 0.05s
-		ROS_INFO_STREAM("Start to report data");
-	}
-	
-	while (ros::ok())							// publish positionesian coordinates
-	{
-		if (_serial.available())
-		{
-			result.data = _serial.read(_serial.available());
-			ROS_INFO_STREAM("Read:" << result.data);
+    try
+    {
+        _serial.setPort("/dev/ttyACM0");
+        _serial.setBaudrate(115200);
+        serial::Timeout to = serial::Timeout::simpleTimeout(1000);
+        _serial.setTimeout(to);
+        _serial.open();
+        ROS_INFO_STREAM("Port has been open successfully");
+    }
+    catch (serial::IOException& e)
+    {
+        ROS_ERROR_STREAM("Unable to open port");
+        return -1;
+    }
+    
+    if (_serial.isOpen())
+    {
+        ros::Duration(3.0).sleep();             // wait 3s
+        _serial.write("M2019\r\n");             // detach
+        ros::Duration(0.5).sleep();             // wait 0.5s
+        _serial.write("M2120 V0.05\r\n");       // report position per 0.05s
+        ROS_INFO_STREAM("Start to report data");
+    }
 
-			// _serial is reading stuff like "@3 X59.81 Y97.40 Z40.25 R102.00"
-			// so there are 5 values, and the last 4 are positions. 
-			// The inverse kinematics are calculated _on the uSwift!_
+    // Default values because these are not used by the uSwift.
+    swiftpro_state.pump = 0;
+    swiftpro_state.gripper = 0;
+    swiftpro_state.swiftpro_status = 0;
+    swiftpro_state.motor_angle1 = 0.0;
+    swiftpro_state.motor_angle2 = 0.0;
+    swiftpro_state.motor_angle3 = 0.0;
+    
+    while (ros::ok())
+    {
+        if (_serial.available())
+        {
+            result = _serial.read(_serial.available());
+            ROS_INFO_STREAM("Read:" << result);
 
-			// TODO: Test the string 'result.data' to make sure it is formatted
-			//  correctly. If it's not, throw it out.
-			// TODO: Turn 'result.data' into a regular std::string object, because
-			//  there is no reason for it to be a std_msgs::String object.
+            // _serial is reading stuff like "@3 X59.81 Y97.40 Z40.25 R102.00"
+            // so there are 5 values, and the last 4 are positions. 
+            // The inverse kinematics are calculated _on the uSwift!_
 
-			for (int i = 0; i < result.data.length(); i++)
-				handlechar(result.data.c_str()[i]);
+            // my new function
+            processstr(&swiftpro_state, result);
 
-			swiftpro_state.pump = 0;
-			swiftpro_state.gripper = 0;
-			swiftpro_state.swiftpro_status = 0;
-			swiftpro_state.motor_angle1 = 0.0;
-			swiftpro_state.motor_angle2 = 0.0;
-			swiftpro_state.motor_angle3 = 0.0;
-			swiftpro_state.motor_angle4 = position[3];
-			swiftpro_state.x = position[0];
-			swiftpro_state.y = position[1];
-			swiftpro_state.z = position[2];
-			pub.publish(swiftpro_state);
-			ROS_INFO("position: %.2f %.2f %.2f %.2f", position[0], position[1], position[2], position[3]);
-		}
-		ros::spinOnce();
-		loop_rate.sleep();
-	}
+            pub.publish(swiftpro_state);
+
+            ROS_INFO(
+                "position: X%.2f Y%.2f Z%.2f R%.2f",
+                swiftpro_state.x, 
+                swiftpro_state.y, 
+                swiftpro_state.z, 
+                swiftpro_state.motor_angle4
+            );
+        }
+        ros::spinOnce();
+        loop_rate.sleep();
+    }
 }
 
 
