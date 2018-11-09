@@ -73,7 +73,7 @@ void processstr(swiftpro::SwiftproState* state, std::string data)
  *   swiftpro_read_node
  *
  * Topic publish: (rate = 20Hz, queue size = 1)
- *   position_read_topic
+ *   SwiftproState
  */
 int main(int argc, char** argv)
 {   

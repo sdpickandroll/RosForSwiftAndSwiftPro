@@ -12,7 +12,7 @@
 #include <tf/transform_broadcaster.h>
 
 #define MATH_PI 				3.141592653589793238463
-#define MATH_TRANS  			57.2958    
+#define MATH_TRANS  			57.2958  // 180/2pi
 #define MATH_L1 				106.6
 #define MATH_L2 				13.2
 #define MATH_LOWER_ARM 			142.07
@@ -107,7 +107,7 @@ bool swiftpro_ik(float position[3], float angle[3])
 
 
 /* 
- * Description: callback when receive data from position_read_topic
+ * Description: callback when receive data from SwiftproState
  * Inputs: 		msg(SwiftproState)	data about swiftpro
  * Outputs:		joint_angle[9]		9 joint angles(degree)
  */
@@ -159,23 +159,23 @@ int main(int argc, char **argv)
 		joint_state.name.resize(9);
 		joint_state.position.resize(9);
 		joint_state.name[0] = "Joint1";
-		joint_state.position[0] = joint_angle[0] / 57.2958;
+		joint_state.position[0] = joint_angle[0] / MATH_TRANS;
 	    joint_state.name[1] = "Joint2";
-		joint_state.position[1] = joint_angle[1] / 57.2958;
+		joint_state.position[1] = joint_angle[1] / MATH_TRANS;
 		joint_state.name[2] = "Joint3";
-		joint_state.position[2] = joint_angle[2] / 57.2958;
+		joint_state.position[2] = joint_angle[2] / MATH_TRANS;
 		joint_state.name[3] = "Joint4";
-		joint_state.position[3] = joint_angle[3] / 57.2958;
+		joint_state.position[3] = joint_angle[3] / MATH_TRANS;
 		joint_state.name[4] = "Joint5";
-		joint_state.position[4] = joint_angle[4] / 57.2958;
+		joint_state.position[4] = joint_angle[4] / MATH_TRANS;
 		joint_state.name[5] = "Joint6";
-		joint_state.position[5] = joint_angle[5] / 57.2958;
+		joint_state.position[5] = joint_angle[5] / MATH_TRANS;
 		joint_state.name[6] = "Joint7";
-		joint_state.position[6] = joint_angle[6] / 57.2958;
+		joint_state.position[6] = joint_angle[6] / MATH_TRANS;
 		joint_state.name[7] = "Joint8";
-		joint_state.position[7] = joint_angle[7] / 57.2958;
+		joint_state.position[7] = joint_angle[7] / MATH_TRANS;
 		joint_state.name[8] = "Joint9";
-		joint_state.position[8] = joint_angle[8] / 57.2958;
+		joint_state.position[8] = joint_angle[8] / MATH_TRANS;
 
 		odom_trans.header.stamp = ros::Time::now();
 		odom_trans.transform.translation.x = 0;
