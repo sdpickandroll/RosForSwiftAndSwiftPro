@@ -6,12 +6,21 @@
  *         David Long <xiaokun.long@ufactory.cc>  
  *         Joshua Petrin <joshua.m.petrin@vanderbilt.edu>     
  */
- 
+
 #include <ros/ros.h>
 #include <serial/serial.h>
 #include <std_msgs/String.h>
-#include <string>
 #include <swiftpro/SwiftproState.h>
+
+#include <exception>
+#include <string>
+
+#include <cstdlib>
+#include <cerrno>
+#include <cstring>
+
+// Unix standard header
+#include <sys/stat.h>
 
 serial::Serial _serial;             // serial object
 
@@ -83,10 +92,23 @@ int main(int argc, char** argv)
     std::string result;
 
     ros::Publisher pub = nh.advertise<swiftpro::SwiftproState>("SwiftproState_topic", 1);
-    ros::Rate loop_rate(20);
+    ros::Rate loop_rate(5);
 
     try
     {
+        // try to enable write on the ttyAMC0 port.
+        // call the chmod() function...
+        char mode[] = "0666";
+        char buf[50] = "/dev/ttyACM0";
+        int i = strtol(mode, 0, 8);
+        if (chmod(buf, i) < 0)
+        {
+            ROS_ERROR("Error in chmod(%s, %s) - %d (%s)\n",
+                    buf, mode, errno, strerror(errno));
+            ROS_ERROR("Run with 'sudo' or give write access to the port.");
+            // return -1;
+        }
+
         _serial.setPort("/dev/ttyACM0");
         _serial.setBaudrate(115200);
         serial::Timeout to = serial::Timeout::simpleTimeout(1000);
@@ -102,11 +124,8 @@ int main(int argc, char** argv)
     
     if (_serial.isOpen())
     {
-        ros::Duration(3.0).sleep();             // wait 3s
-        _serial.write("M2019\r\n");             // detach
-        ros::Duration(0.5).sleep();             // wait 0.5s
-        _serial.write("M2120 V0.05\r\n");       // report position per 0.05s
-        ROS_INFO_STREAM("Start to report data");
+        _serial.write("M2120 V0.2\r\n");       // report position per 0.2s
+        ROS_INFO_STREAM("Starting data report...");
     }
 
     // Default values because these are not used by the uSwift.

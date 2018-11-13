@@ -55,7 +55,7 @@ add_message_files(
   FILES
   SwiftproState.msg
   position.msg
-  position_change.msg
+  vector.msg
   angle4th.msg
   status.msg
 )
@@ -111,7 +111,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
   LIBRARIES swiftpro
-  CATKIN_DEPENDS roscpp rospy std_msgs tf sensor_msgs message_runtime
+  CATKIN_DEPENDS roscpp rospy std_msgs geometry_msgs tf sensor_msgs message_runtime
 #  DEPENDS system_lib
 )
 
@@ -144,7 +144,7 @@ add_executable(swiftpro_write_node src/swiftpro_write_node.cpp)
 add_executable(swiftpro_moveit_node src/swiftpro_moveit_node.cpp)
 add_executable(swiftpro_rviz_node src/swiftpro_rviz_node.cpp)
 add_executable(swiftpro_read_node src/swiftpro_read_node.cpp)
-add_executable(pnr_swiftpro_bare_bones_node src/pnr_swiftpro_bare_bones_node.cpp)
+add_executable(pnr_swiftpro_teleop_node src/pnr_swiftpro_teleop_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -163,7 +163,7 @@ add_dependencies(swiftpro_write_node swiftpro_generate_messages_cpp)
 add_dependencies(swiftpro_moveit_node swiftpro_generate_messages_cpp)
 add_dependencies(swiftpro_rviz_node swiftpro_generate_messages_cpp)
 add_dependencies(swiftpro_read_node swiftpro_generate_messages_cpp)
-add_dependencies(pnr_swiftpro_bare_bones_node swiftpro_generate_messages_cpp)
+add_dependencies(pnr_swiftpro_teleop_node swiftpro_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
@@ -173,7 +173,7 @@ target_link_libraries(swiftpro_write_node ${catkin_LIBRARIES})
 target_link_libraries(swiftpro_moveit_node ${catkin_LIBRARIES})
 target_link_libraries(swiftpro_rviz_node ${catkin_LIBRARIES})
 target_link_libraries(swiftpro_read_node ${catkin_LIBRARIES})
-target_link_libraries(pnr_swiftpro_bare_bones_node ${catkin_LIBRARIES})
+target_link_libraries(pnr_swiftpro_teleop_node ${catkin_LIBRARIES})
 
 #############
 ## Install ##

@@ -5,10 +5,15 @@
  * Author: Roger Cui  <roger@ufactory.cc>      
  */
 #include <string>
+
 #include <ros/ros.h>
+#include <ros/console.h>
 #include <serial/serial.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Empty.h>
+#include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/Twist.h>
+
 #include <swiftpro/SwiftproState.h>
 #include <swiftpro/status.h>
 #include <swiftpro/position.h>
@@ -18,6 +23,7 @@
 
 serial::Serial _serial;             // serial object
 swiftpro::SwiftproState pos;
+swiftpro::SwiftproState desired_pos;
 
 /* 
  * Description: callback when receive data from position_write_topic
@@ -32,16 +38,22 @@ void position_write_callback(const swiftpro::position& msg)
     char y[10];
     char z[10];
 
-    pos.x = msg.x;
-    pos.y = msg.y;
-    pos.z = msg.z;
+    desired_pos.x = msg.x;
+    desired_pos.y = msg.y;
+    desired_pos.z = msg.z;
     sprintf(x, "%.2f", msg.x);
     sprintf(y, "%.2f", msg.y);
     sprintf(z, "%.2f", msg.z);
-    Gcode = "G0 X" + x + " Y" + y + " Z" + z + " F10000" + "\r\n";
-    ROS_INFO("%s", Gcode.c_str());
+    Gcode = std::string("G0 X") + x + " Y" + y + " Z" + z + " F10000" + "\r\n";
+    ROS_INFO("Gcode: %s\n", Gcode.c_str());
     _serial.write(Gcode.c_str());
     result = _serial.read(_serial.available());
+}
+
+
+void position_read_callback(const swiftpro::SwiftproState& msg)
+{
+    pos = swiftpro::SwiftproState(msg);
 }
 
 
@@ -52,9 +64,27 @@ void position_write_callback(const swiftpro::position& msg)
  * Inputs:      msg(float)          3 cartesian diffs: dx, dy, dz(mm)
  * Outputs:     Gcode
  */
-void shift_write_callback(const swiftpro::position_chage& msg)
+void t_vector_callback(const geometry_msgs::Twist& msg)
 {
+    std::string Gcode("");
+    std::string result;
+    char x[10];
+    char y[10];
+    char z[10];
 
+    // TODO: Make sure these don't go out of bounds.
+    desired_pos.x += msg.linear.x;
+    desired_pos.y += msg.linear.y;
+    desired_pos.z += msg.linear.z;
+
+    sprintf(x, "%.2f", msg.linear.x);
+    sprintf(y, "%.2f", msg.linear.y);
+    sprintf(z, "%.2f", msg.linear.z);
+
+    Gcode = std::string("G2204 X") + x + " Y" + y + " Z" + z + " F10000" + "\r\n";
+    ROS_INFO(Gcode.c_str());
+    _serial.write(Gcode.c_str());
+    result = _serial.read(_serial.available());
 }
 
 
@@ -69,7 +99,7 @@ void angle4th_callback(const swiftpro::angle4th& msg)
     std_msgs::String result;
     char m4[10];
     
-    pos.motor_angle4 = msg.angle4th;
+    desired_pos.motor_angle4 = msg.angle4th;
     sprintf(m4, "%.2f", msg.angle4th);
     Gcode = (std::string)"G2202 N3 V" + m4 + "\r\n";
     ROS_INFO("%s", Gcode.c_str());
@@ -98,7 +128,7 @@ void swiftpro_status_callback(const swiftpro::status& msg)
         return;
     }
     
-    pos.swiftpro_status = msg.status;
+    desired_pos.swiftpro_status = msg.status;
     ROS_INFO("%s", Gcode.c_str());
     _serial.write(Gcode.c_str());
     result.data = _serial.read(_serial.available());
@@ -125,7 +155,7 @@ void gripper_callback(const swiftpro::status& msg)
         return;
     }
     
-    pos.gripper = msg.status;
+    desired_pos.gripper = msg.status;
     ROS_INFO("%s", Gcode.c_str());
     _serial.write(Gcode.c_str());
     result.data = _serial.read(_serial.available());
@@ -152,7 +182,7 @@ void pump_callback(const swiftpro::status& msg)
         return;
     }
     
-    pos.pump = msg.status;
+    desired_pos.pump = msg.status;
     ROS_INFO("%s", Gcode.c_str());
     _serial.write(Gcode.c_str());
     result.data = _serial.read(_serial.available());
@@ -179,19 +209,24 @@ int main(int argc, char** argv)
     ros::NodeHandle nh;
     swiftpro::SwiftproState swiftpro_state;
 
+    ros::Subscriber tsub = nh.subscribe("cmd_vel", 1, t_vector_callback);
+    // ros::Subscriber tsub = nh.subscribe("teleop_vector_topic", 1, t_vector_callback);
     ros::Subscriber sub1 = nh.subscribe("position_write_topic", 1, position_write_callback);
     ros::Subscriber sub2 = nh.subscribe("swiftpro_status_topic", 1, swiftpro_status_callback);
     ros::Subscriber sub3 = nh.subscribe("angle4th_topic", 1, angle4th_callback);
     ros::Subscriber sub4 = nh.subscribe("gripper_topic", 1, gripper_callback);
     ros::Subscriber sub5 = nh.subscribe("pump_topic", 1, pump_callback);
-    ros::Publisher   pub = nh.advertise<swiftpro::SwiftproState>("SwiftproState_topic", 1);
-    ros::Rate loop_rate(20);
+    ros::Subscriber possub = nh.subscribe("SwiftproState_topic", 1, position_read_callback);
+    // ros::Rate loop_rate(20);
+
+    ros::Duration(3.5).sleep();  // wait 3.5s
 
     try
     {
         _serial.setPort("/dev/ttyACM0");
         _serial.setBaudrate(115200);
-        _serial.setTimeout(serial::Timeout::simpleTimeout(1000));
+        serial::Timeout to = serial::Timeout::simpleTimeout(1000);
+        _serial.setTimeout(to);
         _serial.open();
         ROS_INFO_STREAM("Port has been open successfully");
     }
@@ -204,7 +239,7 @@ int main(int argc, char** argv)
     if (_serial.isOpen())
     {
         ros::Duration(3.5).sleep();             // wait 3.5s
-        _serial.write("M2120 V0\r\n");          // stop report position
+        // _serial.write("M2120 V0\r\n");          // stop report position
         ros::Duration(0.1).sleep();             // wait 0.1s
         _serial.write("M17\r\n");               // attach
         ros::Duration(0.1).sleep();             // wait 0.1s
@@ -213,9 +248,9 @@ int main(int argc, char** argv)
 
     while (ros::ok())
     {
-        pub.publish(pos);
-        ros::spinOnce();
-        loop_rate.sleep();
+        // pub.publish(desired_pos);
+        ros::spin();
+        // loop_rate.sleep();
     }
     
     return 0;
