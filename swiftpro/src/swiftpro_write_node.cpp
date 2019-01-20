@@ -66,25 +66,36 @@ void position_read_callback(const swiftpro::SwiftproState& msg)
  */
 void t_vector_callback(const geometry_msgs::Twist& msg)
 {
-    std::string Gcode("");
-    std::string result;
-    char x[10];
-    char y[10];
-    char z[10];
+    // TODO:
+    // PROVISIONAL!!! This shouldn't really be here. 
+    // This was only for the 3D mouse, which likes sending a loooot of messages. 
+    // Take this out when you run this next!!!!!
+    static int trigger = 1;
+    if (trigger >= 5)
+    {
+        std::string Gcode("");
+        std::string result;
+        char x[10];
+        char y[10];
+        char z[10];
 
-    // TODO: Make sure these don't go out of bounds.
-    desired_pos.x += msg.linear.x;
-    desired_pos.y += msg.linear.y;
-    desired_pos.z += msg.linear.z;
+        // TODO: Make sure these don't go out of bounds.
+        desired_pos.x += msg.linear.x;
+        desired_pos.y += msg.linear.y;
+        desired_pos.z += msg.linear.z;
 
-    sprintf(x, "%.2f", msg.linear.x);
-    sprintf(y, "%.2f", msg.linear.y);
-    sprintf(z, "%.2f", msg.linear.z);
+        sprintf(x, "%.2f", msg.linear.x);
+        sprintf(y, "%.2f", msg.linear.y);
+        sprintf(z, "%.2f", msg.linear.z);
 
-    Gcode = std::string("G2204 X") + x + " Y" + y + " Z" + z + " F10000" + "\r\n";
-    ROS_INFO(Gcode.c_str());
-    _serial.write(Gcode.c_str());
-    result = _serial.read(_serial.available());
+        Gcode = std::string("G2204 X") + x + " Y" + y + " Z" + z + " F10000" + "\r\n";
+        ROS_INFO("%s", Gcode.c_str());
+        _serial.write(Gcode.c_str());
+        result = _serial.read(_serial.available());
+
+        trigger = 1;
+    }
+    ++trigger;
 }
 
 
@@ -197,6 +208,7 @@ void pump_callback(const swiftpro::status& msg)
  *   swiftpro_state_topic
  *
  * Topic subscribe: (queue size = 1)
+ *   robot_vector
  *   position_write_topic
  *   swiftpro_status_topic
  *   angle4th_topic

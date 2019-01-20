@@ -101,13 +101,13 @@ int main(int argc, char** argv)
         char mode[] = "0666";
         char buf[50] = "/dev/ttyACM0";
         int i = strtol(mode, 0, 8);
-        if (chmod(buf, i) < 0)
-        {
-            ROS_ERROR("Error in chmod(%s, %s) - %d (%s)\n",
-                    buf, mode, errno, strerror(errno));
-            ROS_ERROR("Run with 'sudo' or give write access to the port.");
-            // return -1;
-        }
+        // if (chmod(buf, i) < 0)
+        // {
+        //     ROS_ERROR("Error in chmod(%s, %s) - %d (%s)\n",
+        //             buf, mode, errno, strerror(errno));
+        //     ROS_ERROR("Run with 'sudo' or give write access to the port.");
+        //     // return -1;
+        // }
 
         _serial.setPort("/dev/ttyACM0");
         _serial.setBaudrate(115200);
@@ -159,6 +159,10 @@ int main(int argc, char** argv)
                 swiftpro_state.z, 
                 swiftpro_state.motor_angle4
             );
+        }
+        else
+        {
+            ROS_INFO_STREAM("Serial not available.");
         }
         ros::spinOnce();
         loop_rate.sleep();
